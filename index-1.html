@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<title>Çələbi</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#04060a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#04060a; --ink:#e8f1ff; --mute:#7d8aa3; --rain:#2bff88; --cy:#00e5ff; --mg:#ff2e88; --red:#ff3b57;
+  --line:rgba(232,241,255,.18);
+  --home-bg:#f4f6fa; --home-ink:#0d1420; --home-mute:#5b6678; --home-card:#ffffff;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --home-bg:#0b1018; --home-ink:#e8f1ff; --home-mute:#8b97ad; --home-card:#131b28;
+  }
+}
+:root[data-theme="dark"]{
+  --home-bg:#0b1018; --home-ink:#e8f1ff; --home-mute:#8b97ad; --home-card:#131b28;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*,*::before,*::after{box-sizing:inherit}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Chakra Petch",system-ui,-apple-system,"Segoe UI",sans-serif;
+  -webkit-tap-highlight-color:transparent;overflow:hidden;
+  overscroll-behavior:none;-webkit-user-select:none;user-select:none;touch-action:manipulation;}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--cy);outline-offset:3px}
+
+#app{position:relative;height:100%;width:100%;overflow:hidden;background:var(--bg)}
+section{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .6s ease, visibility 0s linear .6s, filter 1.4s ease;}
+[data-state="lock"] #lock,[data-state="dim"] #lock,
+[data-state="hack"] #hack,[data-state="home"] #home{
+  opacity:1;visibility:visible;pointer-events:auto;transition:opacity .6s ease, visibility 0s, filter 1.4s ease;}
+[data-state="dim"] #lock{filter:brightness(.22) saturate(.5);pointer-events:none}
+
+/* ---------- lock ---------- */
+#lock{padding:24px 20px 32px;justify-content:space-between;
+  background:radial-gradient(120% 80% at 50% 0%,#0d1626 0%,var(--bg) 60%)}
+.clock{margin-top:8vh;text-align:center}
+.clock .t{font-size:clamp(64px,22vw,112px);font-weight:600;letter-spacing:-.02em;line-height:1}
+.clock .d{margin-top:8px;color:var(--mute);font-size:16px}
+.pinzone{display:flex;flex-direction:column;align-items:center;gap:18px;width:100%}
+.dots{display:flex;gap:16px;height:16px}
+.dots i{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--ink);opacity:.8;transition:background .12s, transform .12s}
+.dots i.on{background:var(--ink);transform:scale(1.15)}
+.dots.shake{animation:shake .4s}
+.dots.shake i{border-color:var(--mg);background:var(--mg)}
+@keyframes shake{20%{transform:translateX(-10px)}40%{transform:translateX(10px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+.msg{min-height:20px;font-size:14px;color:var(--mute);text-align:center}
+.msg.bad{color:var(--mg)}
+.pad{display:grid;grid-template-columns:repeat(3,72px);gap:14px 22px}
+.pad button{width:72px;height:72px;border-radius:50%;border:1px solid var(--line);background:rgba(232,241,255,.06);
+  font-size:28px;font-weight:600;display:flex;align-items:center;justify-content:center;
+  transition:background .1s, transform .1s}
+.pad button:active{background:rgba(232,241,255,.22);transform:scale(.94)}
+.pad .ghost{border-color:transparent;background:transparent;font-size:22px;color:var(--mute)}
+.setpin{margin-top:6px;background:none;border:0;color:var(--mute);font-size:13px;padding:8px 12px;text-decoration:underline;text-underline-offset:3px}
+
+/* ---------- hack ---------- */
+#hack{background:var(--bg);text-align:center;padding:24px 20px}
+#rain{position:absolute;inset:0;width:100%;height:100%;opacity:0;transition:opacity 1.2s ease}
+[data-state="hack"] #rain{opacity:.5}
+#hack::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.28) 0 1px,transparent 1px 3px);mix-blend-mode:multiply}
+#hack::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(90% 60% at 50% 50%,transparent 30%,rgba(4,6,10,.85) 100%)}
+.hk{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:18px;width:100%}
+#hack.verifying .hk{display:none}
+#hack.reveal .hk{animation:flick .95s steps(1) 1}
+@keyframes flick{
+  0%{opacity:0}8%{opacity:1;transform:translateX(-5px)}14%{opacity:.15}
+  26%{opacity:1;transform:translateX(6px)}34%{opacity:.3}
+  48%{opacity:1;transform:translateX(-3px)}58%{opacity:.6}
+  72%{opacity:1;transform:translateX(2px)}100%{opacity:1;transform:none}}
+.sys{font-size:14px;color:var(--rain);letter-spacing:.06em}
+.glitch{position:relative;margin:0;font-size:clamp(52px,19vw,132px);font-weight:700;letter-spacing:.06em;line-height:1;
+  color:#fff;text-shadow:0 0 24px rgba(43,255,136,.55),0 0 64px rgba(43,255,136,.3)}
+.glitch::before,.glitch::after{content:attr(data-text);position:absolute;left:0;top:0;width:100%;height:100%}
+.glitch::before{color:var(--cy);animation:g1 2.1s infinite steps(1);mix-blend-mode:screen;text-shadow:none}
+.glitch::after{color:var(--mg);animation:g2 2.6s infinite steps(1);mix-blend-mode:screen;text-shadow:none}
+@keyframes g1{
+  0%,86%,100%{transform:translate(0);clip-path:inset(0 0 0 0);opacity:0}
+  87%{transform:translate(-6px,-2px);clip-path:inset(12% 0 62% 0);opacity:1}
+  90%{transform:translate(5px,2px);clip-path:inset(58% 0 12% 0);opacity:1}
+  93%{transform:translate(-3px,0);clip-path:inset(32% 0 40% 0);opacity:1}
+  96%{transform:translate(0);clip-path:inset(0);opacity:0}}
+@keyframes g2{
+  0%,78%,100%{transform:translate(0);clip-path:inset(0);opacity:0}
+  79%{transform:translate(7px,1px);clip-path:inset(70% 0 6% 0);opacity:1}
+  83%{transform:translate(-5px,-1px);clip-path:inset(4% 0 74% 0);opacity:1}
+  88%{transform:translate(4px,0);clip-path:inset(40% 0 30% 0);opacity:1}
+  92%{transform:translate(0);clip-path:inset(0);opacity:0}}
+.term{width:100%;max-width:330px;min-height:104px;text-align:left;font-size:13px;line-height:1.55;color:var(--rain);
+  padding:10px 14px;border-left:2px solid var(--rain);background:rgba(4,6,10,.62)}
+.term .warn{color:var(--red);font-weight:600}
+.ask{color:var(--ink);font-size:16px;max-width:280px;line-height:1.45}
+.say{position:relative;border:1.5px solid var(--rain);background:rgba(43,255,136,.08);color:#eafff3;
+  border-radius:999px;padding:16px 34px;font-size:24px;font-weight:700;letter-spacing:.03em;
+  box-shadow:0 0 28px rgba(43,255,136,.25);}
+.say.live::before{content:"";position:absolute;inset:-7px;border-radius:999px;border:1px solid var(--rain);
+  animation:pulse 1.6s infinite ease-out}
+@keyframes pulse{from{transform:scale(.96);opacity:.9}to{transform:scale(1.18);opacity:0}}
+.status{min-height:20px;font-size:13px;color:var(--mute)}
+
+/* verification */
+.vf{position:relative;z-index:2;display:none;flex-direction:column;align-items:center;gap:20px;width:100%;max-width:330px}
+#hack.verifying .vf{display:flex}
+.vl{font-size:15px;color:var(--rain);letter-spacing:.05em}
+.vl.ok{color:#eafff3}
+.barwrap{width:100%;height:8px;border:1px solid var(--rain);border-radius:99px;overflow:hidden;background:rgba(43,255,136,.08)}
+.bar{height:100%;width:0;background:var(--rain);box-shadow:0 0 14px var(--rain);transition:width 1.6s linear}
+.pct{font-size:13px;color:var(--mute)}
+.apology{min-height:96px;font-size:22px;font-weight:600;line-height:1.35;color:#fff;text-shadow:0 0 18px rgba(43,255,136,.45)}
+.apology div{min-height:1.35em}
+.apology .l2{font-size:18px;font-weight:400;color:#cfe9db;text-shadow:none;margin-top:6px}
+.caret::after{content:"▌";color:var(--rain);margin-left:2px;animation:blink .7s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* ---------- home (normal state) ---------- */
+#home{background:var(--home-bg);color:var(--home-ink);gap:14px;padding:24px}
+.chip{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(128,140,160,.35);border-radius:999px;
+  padding:6px 14px;font-size:13px;color:var(--home-mute)}
+.chip i{width:8px;height:8px;border-radius:50%;background:#1fbf6b;animation:live 2s infinite}
+@keyframes live{0%{box-shadow:0 0 0 0 rgba(31,191,107,.55)}100%{box-shadow:0 0 0 10px rgba(31,191,107,0)}}
+.wm{font-size:clamp(52px,19vw,96px);font-weight:700;letter-spacing:.02em;line-height:1;margin-top:6px;
+  text-shadow:0 0 34px rgba(43,255,136,.4)}
+#home .hi{font-size:20px;font-weight:600}
+#home .t{font-size:clamp(34px,10vw,48px);font-weight:600;line-height:1;letter-spacing:-.01em;color:var(--home-mute)}
+#home .again{margin-top:18px;background:var(--home-card);border:1px solid rgba(128,140,160,.35);
+  color:var(--home-ink);border-radius:14px;padding:14px 22px;font-size:16px;font-weight:600}
+
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:9}
+#flash.go{animation:flash .7s ease-out}
+@keyframes flash{0%{opacity:.9}100%{opacity:0}}
+
+@media (prefers-reduced-motion: reduce){
+  .glitch::before,.glitch::after,.say.live::before,.dots.shake,#hack.reveal .hk,.chip i,.caret::after{animation:none}
+  .bar{transition:none}
+  section{transition:opacity .2s, visibility 0s}
+}
+</style>
+</head>
+<body>
+<div id="app" data-state="lock">
+
+  <section id="lock" aria-label="Kilid ekranı">
+    <div class="clock"><div class="t" id="clk">00:00</div><div class="d" id="dat"></div></div>
+    <div class="pinzone">
+      <div class="dots" id="dots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <div class="msg" id="msg">PIN daxil et</div>
+      <div class="pad" id="pad"></div>
+      <button class="setpin" id="setpin" type="button">PIN dəyiş</button>
+    </div>
+  </section>
+
+  <section id="hack" aria-label="Səs ilə açılış">
+    <canvas id="rain"></canvas>
+    <div class="hk">
+      <div class="sys">giriş təsdiqləndi</div>
+      <h1 class="glitch" id="hk" data-text="HACKER">HACKER</h1>
+      <div class="term" id="term" aria-live="polite"></div>
+      <div class="ask">Telefonu açmaq üçün səsli de:</div>
+      <button class="say" id="say" type="button">Çələbi</button>
+      <div class="status" id="status" role="status"></div>
+    </div>
+    <div class="vf" aria-live="polite">
+      <div class="vl" id="vlabel">Səs təsdiqlənir…</div>
+      <div class="barwrap"><div class="bar" id="bar"></div></div>
+      <div class="pct" id="pct">0%</div>
+      <div class="apology" id="apology"></div>
+    </div>
+  </section>
+
+  <section id="home" aria-label="Ana ekran">
+    <div class="chip"><i></i>Sistem təhlükəsizdir</div>
+    <div class="wm" id="wm">Çələbi</div>
+    <div class="hi">Xoş gəldin, efendim.</div>
+    <div class="t" id="clk2">00:00</div>
+    <button class="again" id="again" type="button">Yenidən kilidlə</button>
+  </section>
+
+  <div id="flash"></div>
+</div>
+
+<script>
+(function(){
+  var app = document.getElementById('app');
+  var $ = function(id){ return document.getElementById(id); };
+  var hack = $('hack');
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var busy = false, logTimer = null, timers = [];
+
+  function later(fn, ms){ var t = setTimeout(fn, ms); timers.push(t); return t; }
+  function clearTimers(){ timers.forEach(clearTimeout); timers = []; clearTimeout(logTimer); }
+
+  /* ---------- app mode: fullscreen, offline cache, no long-press menu ---------- */
+  var standalone = (window.matchMedia && (matchMedia('(display-mode: fullscreen)').matches ||
+                    matchMedia('(display-mode: standalone)').matches)) || navigator.standalone;
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  var fsTried = false;
+  document.addEventListener('pointerdown', function(){
+    if(fsTried) return; fsTried = true;
+    if(!standalone){
+      try{
+        var el = document.documentElement;
+        var p = (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+        if(p && p.catch) p.catch(function(){});
+      }catch(e){}
+    }
+    try{ if(navigator.wakeLock) navigator.wakeLock.request('screen').catch(function(){}); }catch(e){}
+  });
+  try{ if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){}); }catch(e){}
+
+  /* ---------- sound ---------- */
+  var ac;
+  function tone(f, d, type, v){
+    try{
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      var o = ac.createOscillator(), g = ac.createGain();
+      o.type = type || 'sine'; o.frequency.value = f || 520; g.gain.value = v || 0.04;
+      o.connect(g); g.connect(ac.destination); o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + (d || 0.06));
+      o.stop(ac.currentTime + (d || 0.06));
+    }catch(e){}
+  }
+  function sweep(from, to, dur, type){
+    try{
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      var o = ac.createOscillator(), g = ac.createGain();
+      o.type = type || 'sawtooth'; o.frequency.setValueAtTime(from, ac.currentTime);
+      o.frequency.exponentialRampToValueAtTime(to, ac.currentTime + dur);
+      g.gain.setValueAtTime(0.05, ac.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + dur);
+      o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + dur);
+    }catch(e){}
+  }
+  function buzz(p){ try{ navigator.vibrate && navigator.vibrate(p); }catch(e){} }
+
+  function speak(text){
+    try{
+      var s = window.speechSynthesis; if(!s) return;
+      s.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      var v = s.getVoices() || [];
+      var pick = null, i;
+      for(i = 0; i < v.length; i++){ if(/^az/i.test(v[i].lang)){ pick = v[i]; break; } }
+      if(!pick){ for(i = 0; i < v.length; i++){ if(/^tr/i.test(v[i].lang)){ pick = v[i]; break; } } }
+      if(pick){ u.voice = pick; u.lang = pick.lang; } else { u.lang = 'tr-TR'; }
+      u.rate = 0.95; u.pitch = 0.9;
+      s.speak(u);
+    }catch(e){}
+  }
+
+  /* ---------- clock ---------- */
+  function tick(){
+    var n = new Date();
+    var t = String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+    $('clk').textContent = t; $('clk2').textContent = t;
+    var d = '';
+    try{ d = n.toLocaleDateString('az-AZ', {weekday:'long', day:'numeric', month:'long'}); }catch(e){}
+    $('dat').textContent = d;
+  }
+  tick(); setInterval(tick, 1000);
+
+  /* ---------- PIN ---------- */
+  var pin = '1234';
+  try{ pin = localStorage.getItem('celebi-pin') || pin; }catch(e){}
+  var entry = '', mode = 'unlock';
+  var dots = $('dots'), msg = $('msg');
+
+  var pad = $('pad');
+  ['1','2','3','4','5','6','7','8','9','','0','⌫'].forEach(function(k){
+    var b = document.createElement('button');
+    b.type = 'button';
+    if(k === ''){ b.className = 'ghost'; b.disabled = true; b.setAttribute('aria-hidden','true'); }
+    else if(k === '⌫'){ b.className = 'ghost'; b.setAttribute('aria-label','Sil'); b.textContent = k; b.onclick = back; }
+    else { b.textContent = k; b.onclick = function(){ press(k); }; }
+    pad.appendChild(b);
+  });
+
+  function paint(){
+    var els = dots.children;
+    for(var i = 0; i < els.length; i++){ els[i].className = i < entry.length ? 'on' : ''; }
+  }
+  function say(text, bad){ msg.textContent = text; msg.className = 'msg' + (bad ? ' bad' : ''); }
+  function press(d){
+    if(app.dataset.state !== 'lock' || entry.length >= 4) return;
+    entry += d; tone(600 + entry.length * 60, .05); buzz(10); paint();
+    if(entry.length === 4) setTimeout(submit, 160);
+  }
+  function back(){ if(app.dataset.state !== 'lock') return; entry = entry.slice(0,-1); paint(); }
+  function reset(){ entry = ''; paint(); }
+  function submit(){
+    if(mode === 'set'){
+      pin = entry; mode = 'unlock';
+      try{ localStorage.setItem('celebi-pin', pin); }catch(e){}
+      say('Yeni PIN yadda saxlandı'); $('setpin').textContent = 'PIN dəyiş'; reset(); return;
+    }
+    if(entry === pin){ correct(); }
+    else{
+      say('PIN yanlışdır', true); tone(140, .25, 'square', .05); buzz([60,40,60]);
+      dots.classList.add('shake');
+      setTimeout(function(){ dots.classList.remove('shake'); reset(); say('PIN daxil et'); }, 450);
+    }
+  }
+  $('setpin').onclick = function(){
+    if(mode === 'set'){ mode = 'unlock'; this.textContent = 'PIN dəyiş'; say('PIN daxil et'); }
+    else { mode = 'set'; this.textContent = 'Ləğv et'; say('Yeni 4 rəqəmli PIN yaz'); }
+    reset();
+  };
+  document.addEventListener('keydown', function(e){
+    if(app.dataset.state !== 'lock') return;
+    if(/^[0-9]$/.test(e.key)) press(e.key);
+    else if(e.key === 'Backspace') back();
+  });
+
+  /* ---------- flow: lock -> dim -> hack -> verify -> home ---------- */
+  function correct(){
+    buzz(40); tone(880, .12);
+    app.dataset.state = 'dim';
+    later(function(){
+      app.dataset.state = 'hack';
+      hack.classList.add('reveal');
+      later(function(){ hack.classList.remove('reveal'); }, 1100);
+      tone(55, .6, 'sine', .12); sweep(90, 760, .9, 'sawtooth'); buzz([80,40,120]);
+      scramble($('hk'), 'HACKER', reduce ? 1 : 1000);
+      startRain(); typeLog(); listen();
+    }, reduce ? 300 : 1500);
+  }
+
+  var LOG = [
+    ['> PIN təsdiqləndi', 0],
+    ['> barmaq izi: uyğun deyil', 1],
+    ['> naməlum əl aşkarlandı', 1],
+    ['> kamera və mikrofon bloklanır', 0],
+    ['> sahibin səsi gözlənilir…', 0]
+  ];
+  function typeLog(){
+    var box = $('term'); box.innerHTML = '';
+    var i = 0;
+    (function next(){
+      if(app.dataset.state !== 'hack' || i >= LOG.length) return;
+      var d = document.createElement('div');
+      d.textContent = LOG[i][0];
+      if(LOG[i][1]) d.className = 'warn';
+      box.appendChild(d);
+      tone(LOG[i][1] ? 240 : 1100, .05, 'square', .02);
+      i++;
+      logTimer = setTimeout(next, reduce ? 50 : 620);
+    })();
+  }
+
+  function scramble(el, finalText, dur){
+    var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZƏÇŞĞÖÜ#$%&@01';
+    var t0 = performance.now();
+    (function f(now){
+      var p = Math.min(1, (now - t0) / dur), out = '';
+      for(var i = 0; i < finalText.length; i++){
+        out += p >= (i + 1) / finalText.length ? finalText[i] : chars[Math.floor(Math.random() * chars.length)];
+      }
+      el.textContent = out; el.setAttribute('data-text', out);
+      if(p < 1) requestAnimationFrame(f);
+    })(t0);
+  }
+
+  function typeInto(el, text, cb){
+    var i = 0; el.classList.add('caret');
+    (function step(){
+      el.firstChild ? (el.firstChild.nodeValue = text.slice(0, i)) : el.appendChild(document.createTextNode(text.slice(0, i)));
+      if(i < text.length){ i++; if(i % 2 === 0) tone(900, .02, 'square', .012); later(step, reduce ? 5 : 38); }
+      else { el.classList.remove('caret'); cb && cb(); }
+    })();
+  }
+
+  function unlock(){
+    if(app.dataset.state !== 'hack' || busy) return;
+    busy = true; stopListen(); clearTimeout(logTimer); buzz([30,30,80]);
+    hack.classList.add('verifying');
+    var bar = $('bar'), pct = $('pct'), lab = $('vlabel'), ap = $('apology');
+    lab.textContent = 'Səs təsdiqlənir…'; lab.className = 'vl'; ap.innerHTML = '';
+    bar.style.width = '0'; pct.textContent = '0%';
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ bar.style.width = '100%'; }); });
+    var n = 0;
+    var iv = setInterval(function(){
+      n = Math.min(100, n + 4); pct.textContent = n + '%';
+      tone(300 + n * 6, .03, 'square', .015);
+      if(n >= 100) clearInterval(iv);
+    }, 64);
+    later(function(){
+      lab.textContent = 'Sahib təsdiqləndi'; lab.className = 'vl ok';
+      sweep(300, 900, .4, 'triangle'); buzz(60);
+      var l1 = document.createElement('div'), l2 = document.createElement('div');
+      l2.className = 'l2'; ap.appendChild(l1); ap.appendChild(l2);
+      speak('Bağışlayın, efendim. Elə bildim başqasının əlidir.');
+      typeInto(l1, 'Bağışlayın, efendim.', function(){
+        later(function(){ typeInto(l2, 'Elə bildim başqasının əlidir.'); }, 150);
+      });
+    }, 1750);
+    later(finish, 5400);
+  }
+
+  function finish(){
+    var fl = $('flash'); fl.classList.remove('go'); void fl.offsetWidth; fl.classList.add('go');
+    sweep(700, 90, .5, 'triangle'); buzz([30,30,80]);
+    app.dataset.state = 'home';
+    scramble($('wm'), 'Çələbi', reduce ? 1 : 1100);
+    later(function(){ hack.classList.remove('verifying'); stopRain(); }, 800);
+  }
+
+  $('say').onclick = function(){ tone(700, .08); unlock(); };
+  $('again').onclick = function(){
+    clearTimers(); busy = false;
+    try{ window.speechSynthesis && window.speechSynthesis.cancel(); }catch(e){}
+    entry = ''; mode = 'unlock'; paint(); say('PIN daxil et');
+    hack.classList.remove('verifying', 'reveal');
+    $('hk').textContent = 'HACKER'; $('hk').setAttribute('data-text','HACKER');
+    $('term').innerHTML = ''; $('apology').innerHTML = ''; setStatus('');
+    app.dataset.state = 'lock';
+  };
+
+  /* ---------- matrix rain ---------- */
+  var cv = $('rain'), cx = cv.getContext('2d'), fs = 16, cols = [], timer = null;
+  var glyphs = 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿ0123456789ƏÇŞĞÖÜIabcdef<>/{}[]=+*#'.split('');
+  function size(){
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = innerWidth * dpr; cv.height = innerHeight * dpr;
+    cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    cols = [];
+    for(var i = 0; i < Math.ceil(innerWidth / fs); i++) cols.push(Math.random() * -40);
+    cx.fillStyle = '#04060a'; cx.fillRect(0, 0, innerWidth, innerHeight);
+  }
+  function frame(){
+    cx.fillStyle = 'rgba(4,6,10,.14)'; cx.fillRect(0, 0, innerWidth, innerHeight);
+    cx.font = fs + 'px "Chakra Petch", monospace';
+    for(var i = 0; i < cols.length; i++){
+      var y = cols[i] * fs;
+      cx.fillStyle = Math.random() > .975 ? '#eafff3' : '#2bff88';
+      cx.fillText(glyphs[Math.floor(Math.random() * glyphs.length)], i * fs, y);
+      if(y > innerHeight && Math.random() > .975) cols[i] = 0;
+      cols[i] += 1;
+    }
+  }
+  function startRain(){ size(); if(reduce){ for(var k = 0; k < 40; k++) frame(); return; } clearInterval(timer); timer = setInterval(frame, 45); }
+  function stopRain(){ clearInterval(timer); timer = null; }
+  addEventListener('resize', function(){ if(app.dataset.state === 'hack') size(); });
+
+  /* ---------- voice: "Telefonu aç" ---------- */
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var rec = null, lang = 'az-AZ', denied = false;
+  function setStatus(t){ $('status').textContent = t; }
+  function norm(s){
+    return s.toLowerCase().replace(/ç/g,'c').replace(/ə/g,'e').replace(/ı/g,'i').replace(/ş/g,'s')
+            .replace(/ö/g,'o').replace(/ü/g,'u').replace(/ğ/g,'g').replace(/[^a-z ]/g,'');
+  }
+  function heard(t){
+    var n = norm(t);
+    return /telefon\w*\s+a[ck]/.test(n) || /c?h?el[ea]b[iy]/.test(n);
+  }
+  function listen(){
+    denied = false;
+    if(!SR){ setStatus('Bu brauzer səsi tanımır — düyməyə bas'); return; }
+    try{
+      rec = new SR(); rec.lang = lang; rec.continuous = true; rec.interimResults = true;
+      rec.onresult = function(e){
+        for(var i = e.resultIndex; i < e.results.length; i++){
+          if(heard(e.results[i][0].transcript)){ unlock(); return; }
+        }
+      };
+      rec.onerror = function(e){
+        if(e.error === 'language-not-supported'){ lang = 'tr-TR'; }
+        else if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
+          denied = true; $('say').classList.remove('live');
+          setStatus('Mikrofon icazəsi yoxdur — düyməyə bas');
+        }
+      };
+      rec.onend = function(){
+        if(app.dataset.state === 'hack' && !denied && !busy){
+          setTimeout(function(){ try{ rec.lang = lang; rec.start(); }catch(e){} }, 250);
+        }
+      };
+      rec.start();
+      $('say').classList.add('live'); setStatus('Dinləyirəm…');
+    }catch(e){ setStatus('Mikrofon açılmadı — düyməyə bas'); }
+  }
+  function stopListen(){
+    $('say').classList.remove('live'); setStatus('');
+    try{ if(rec){ rec.onend = null; rec.stop(); } }catch(e){}
+  }
+  try{ window.speechSynthesis && window.speechSynthesis.getVoices(); }catch(e){}
+})();
+</script>
+</body>
+</html>
