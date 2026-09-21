@@ -129,7 +129,7 @@ section{position:absolute;inset:0;display:flex;flex-direction:column;align-items
 @keyframes blink{50%{opacity:0}}
 
 /* ---------- home (normal state) ---------- */
-#home{background:var(--home-bg);color:var(--home-ink);gap:14px;padding:24px}
+#home{background:var(--home-bg);color:var(--home-ink);gap:8px;padding:max(22px,4vh) 20px 20px;justify-content:flex-start}
 .chip{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(128,140,160,.35);border-radius:999px;
   padding:6px 14px;font-size:13px;color:var(--home-mute)}
 .chip i{width:8px;height:8px;border-radius:50%;background:#1fbf6b;animation:live 2s infinite}
@@ -140,6 +140,30 @@ section{position:absolute;inset:0;display:flex;flex-direction:column;align-items
 #home .t{font-size:clamp(34px,10vw,48px);font-weight:600;line-height:1;letter-spacing:-.01em;color:var(--home-mute)}
 #home .again{margin-top:18px;background:var(--home-card);border:1px solid rgba(128,140,160,.35);
   color:var(--home-ink);border-radius:14px;padding:14px 22px;font-size:16px;font-weight:600}
+
+/* ---------- assistant panel ---------- */
+#home .wm{font-size:clamp(44px,15vw,72px)}
+.asst{margin-top:auto;width:100%;max-width:380px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.said{min-height:18px;font-size:13px;color:var(--home-mute);text-align:center}
+.reply{min-height:46px;font-size:18px;font-weight:600;text-align:center;line-height:1.35;animation:rise .3s ease}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.acts{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.act{display:inline-flex;align-items:center;background:#1fbf6b;color:#04120a;text-decoration:none;
+  font-weight:700;font-size:16px;border-radius:14px;padding:12px 18px}
+.act.alt{background:var(--home-card);color:var(--home-ink);border:1px solid rgba(128,140,160,.4)}
+.orb{position:relative;width:76px;height:76px;border-radius:50%;border:0;background:#0b1a12;color:#eafff3;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 0 2px rgba(43,255,136,.55),0 0 26px rgba(43,255,136,.35)}
+.orb svg{width:32px;height:32px}
+.orb.live::before{content:"";position:absolute;inset:-8px;border-radius:50%;border:1px solid var(--rain);animation:pulse 1.6s infinite ease-out}
+.orb.off{background:#241416;box-shadow:0 0 0 2px rgba(255,59,87,.55)}
+.ahint{font-size:12px;color:var(--home-mute);text-align:center}
+.qrow{display:flex;gap:8px;overflow-x:auto;width:100%;padding:2px 2px 6px;scrollbar-width:none}
+.qrow::-webkit-scrollbar{display:none}
+.q{flex:0 0 auto;text-decoration:none;color:var(--home-ink);background:var(--home-card);
+  border:1px solid rgba(128,140,160,.35);border-radius:999px;padding:8px 14px;font-size:14px;font-weight:600;font-family:inherit}
+#home .again{margin-top:0;padding:8px 14px;font-size:13px;border-radius:999px;background:transparent;color:var(--home-mute);border:0}
+@media (prefers-reduced-motion: reduce){.orb.live::before,.reply{animation:none}}
 
 #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:9}
 #flash.go{animation:flash .7s ease-out}
@@ -184,11 +208,21 @@ section{position:absolute;inset:0;display:flex;flex-direction:column;align-items
   </section>
 
   <section id="home" aria-label="Ana ekran">
-    <div class="chip"><i></i>Sistem təhlükəsizdir</div>
+    <div class="chip"><i></i><span id="chiptxt">Çələbi hazırdır</span></div>
     <div class="wm" id="wm">Çələbi</div>
     <div class="hi">Xoş gəldin, efendim.</div>
     <div class="t" id="clk2">00:00</div>
-    <button class="again" id="again" type="button">Yenidən kilidlə</button>
+    <div class="asst">
+      <div class="said" id="said" aria-live="polite"></div>
+      <div class="reply" id="reply" aria-live="polite">«Çələbi» de, sonra əmrini söylə.</div>
+      <div class="acts" id="acts"></div>
+      <button class="orb live" id="orb" type="button" aria-label="Mikrofonu yandır və ya söndür">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      </button>
+      <div class="ahint" id="ahint">Nümunə: «Çələbi, zarafat de»</div>
+      <div class="qrow" id="qrow"></div>
+      <button class="again" id="again" type="button">Yenidən kilidlə</button>
+    </div>
   </section>
 
   <div id="flash"></div>
@@ -222,6 +256,23 @@ section{position:absolute;inset:0;display:flex;flex-direction:column;align-items
     try{ if(navigator.wakeLock) navigator.wakeLock.request('screen').catch(function(){}); }catch(e){}
   });
   try{ if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){}); }catch(e){}
+
+  /* ---------- lock hardening ---------- */
+  var trapN = 0, hiddenAt = 0;
+  function armTrap(){ try{ history.pushState({t:1}, '', location.href); trapN++; }catch(e){} }
+  function disarmTrap(){ var k = trapN; trapN = 0; if(k > 0){ try{ history.go(-k); }catch(e){} } }
+  window.addEventListener('popstate', function(){
+    if(app.dataset.state === 'home') return;
+    trapN = Math.max(0, trapN - 1); armTrap();
+  });
+  document.addEventListener('click', function(){
+    if(app.dataset.state !== 'home' && trapN < 4) armTrap();
+  });
+  document.addEventListener('visibilitychange', function(){
+    if(document.hidden){ hiddenAt = Date.now(); return; }
+    if(hiddenAt && app.dataset.state === 'home' && Date.now() - hiddenAt > 20000){ $('again').onclick(); }
+    hiddenAt = 0;
+  });
 
   /* ---------- sound ---------- */
   var ac;
@@ -296,28 +347,56 @@ section{position:absolute;inset:0;display:flex;flex-direction:column;align-items
   }
   function say(text, bad){ msg.textContent = text; msg.className = 'msg' + (bad ? ' bad' : ''); }
   function press(d){
-    if(app.dataset.state !== 'lock' || entry.length >= 4) return;
+    if(app.dataset.state !== 'lock' || entry.length >= 4 || Date.now() < lockUntil) return;
     entry += d; tone(600 + entry.length * 60, .05); buzz(10); paint();
     if(entry.length === 4) setTimeout(submit, 160);
   }
   function back(){ if(app.dataset.state !== 'lock') return; entry = entry.slice(0,-1); paint(); }
   function reset(){ entry = ''; paint(); }
+  var fails = 0, lockUntil = 0, lockTick = null;
+  try{ lockUntil = +localStorage.getItem('celebi-lock') || 0; }catch(e){}
+  function lockMsg(){
+    var left = Math.ceil((lockUntil - Date.now()) / 1000);
+    if(left <= 0){ clearInterval(lockTick); lockTick = null; say(mode === 'verify' ? 'Əvvəlcə köhnə PIN-i yaz' : 'PIN daxil et'); return; }
+    say('Çox səhv cəhd. ' + left + ' saniyə gözlə', true);
+  }
+  function startLock(sec){
+    lockUntil = Date.now() + sec * 1000;
+    try{ localStorage.setItem('celebi-lock', String(lockUntil)); }catch(e){}
+    clearInterval(lockTick); lockMsg(); lockTick = setInterval(lockMsg, 500);
+  }
+  if(lockUntil > Date.now()){ lockMsg(); lockTick = setInterval(lockMsg, 500); }
+
+  function wrong(){
+    fails++;
+    tone(140, .25, 'square', .05); buzz([60,40,60]);
+    dots.classList.add('shake');
+    var wait = fails >= 3 ? Math.min(30 * Math.pow(2, fails - 3), 600) : 0;
+    if(!wait) say('PIN yanlışdır', true);
+    setTimeout(function(){
+      dots.classList.remove('shake'); reset();
+      if(wait){ startLock(wait); }
+      else { say(mode === 'verify' ? 'Əvvəlcə köhnə PIN-i yaz' : 'PIN daxil et'); }
+    }, 450);
+  }
   function submit(){
+    if(Date.now() < lockUntil){ reset(); return; }
+    if(mode === 'verify'){
+      if(entry === pin){ fails = 0; mode = 'set'; say('Yeni 4 rəqəmli PIN yaz'); reset(); }
+      else { wrong(); }
+      return;
+    }
     if(mode === 'set'){
       pin = entry; mode = 'unlock';
       try{ localStorage.setItem('celebi-pin', pin); }catch(e){}
       say('Yeni PIN yadda saxlandı'); $('setpin').textContent = 'PIN dəyiş'; reset(); return;
     }
-    if(entry === pin){ correct(); }
-    else{
-      say('PIN yanlışdır', true); tone(140, .25, 'square', .05); buzz([60,40,60]);
-      dots.classList.add('shake');
-      setTimeout(function(){ dots.classList.remove('shake'); reset(); say('PIN daxil et'); }, 450);
-    }
+    if(entry === pin){ fails = 0; correct(); }
+    else { wrong(); }
   }
   $('setpin').onclick = function(){
-    if(mode === 'set'){ mode = 'unlock'; this.textContent = 'PIN dəyiş'; say('PIN daxil et'); }
-    else { mode = 'set'; this.textContent = 'Ləğv et'; say('Yeni 4 rəqəmli PIN yaz'); }
+    if(mode !== 'unlock'){ mode = 'unlock'; this.textContent = 'PIN dəyiş'; say('PIN daxil et'); }
+    else { mode = 'verify'; this.textContent = 'Ləğv et'; say('Əvvəlcə köhnə PIN-i yaz'); }
     reset();
   };
   document.addEventListener('keydown', function(e){
@@ -416,12 +495,14 @@ section{position:absolute;inset:0;display:flex;flex-direction:column;align-items
     sweep(700, 90, .5, 'triangle'); buzz([30,30,80]);
     app.dataset.state = 'home';
     scramble($('wm'), 'Çələbi', reduce ? 1 : 1100);
+    disarmTrap();
+    later(asstStart, 1400);
     later(function(){ hack.classList.remove('verifying'); stopRain(); }, 800);
   }
 
   $('say').onclick = function(){ tone(700, .08); unlock(); };
   $('again').onclick = function(){
-    clearTimers(); busy = false;
+    clearTimers(); busy = false; asstStop();
     try{ window.speechSynthesis && window.speechSynthesis.cancel(); }catch(e){}
     entry = ''; mode = 'unlock'; paint(); say('PIN daxil et');
     hack.classList.remove('verifying', 'reveal');
@@ -498,6 +579,287 @@ section{position:absolute;inset:0;display:flex;flex-direction:column;align-items
     $('say').classList.remove('live'); setStatus('');
     try{ if(rec){ rec.onend = null; rec.stop(); } }catch(e){}
   }
+  /* ---------- assistant: works while the app is open on screen ---------- */
+  function nz(s){
+    return s.toLowerCase().replace(/\u0307/g,'').replace(/ç/g,'c').replace(/ə/g,'e').replace(/ı/g,'i')
+            .replace(/ş/g,'s').replace(/ö/g,'o').replace(/ü/g,'u').replace(/ğ/g,'g')
+            .replace(/[^a-z0-9: .]/g,' ').replace(/\s+/g,' ').trim();
+  }
+  function pad2(x){ return (x < 10 ? '0' : '') + x; }
+  function rnd(a){ return a[Math.floor(Math.random() * a.length)]; }
+
+  var JOKES = [
+    'Kompüter həkimə gedib. Həkim soruşub: nəyin var? Kompüter deyib: çox pəncərə açılıb, başım gicəllənir.',
+    'Batareya telefona deyir: sən məni yalnız yeddi faizə düşəndə xatırlayırsan.',
+    'Müəllim soruşur: gələcək zamana misal ver. Şagird deyir: sabah mən dərsə vaxtında gələcəm. Müəllim deyir: bu gələcək zaman yox, fantaziyadır.',
+    'Hakerlər niyə tez-tez yorulur? Çünki bütün günü parolları yadda saxlamağa çalışırlar.',
+    'Bir nəfər telefonuna deyir: səni hər gecə şarj edirəm, sən isə mənə bircə dəfə də zəng etmirsən.'
+  ];
+  var jokeIx = Math.floor(Math.random() * JOKES.length);
+
+  var SMALL = [
+    [/kimsen|adin ne|sen kim/, ['Mən Çələbiyəm, sənin şəxsi köməkçin.', 'Adım Çələbidir, efendim. Sənə xidmət etməyə hazıram.']],
+    [/necesen|halin nece|ne var ne yox|ne edirsen/, ['Əla, efendim! Səni gözləyirdim.', 'Yaxşıyam, sağ ol. Sən necəsən?']],
+    [/sabahin xeyir|sabahiniz xeyir/, ['Sabahın xeyir, efendim! Günün uğurlu olsun.']],
+    [/gecen xeyre|gecəniz xeyre|gecen xeyir/, ['Gecən xeyrə, efendim. Şirin yuxular.']],
+    [/sag ol|tesekkur|minnetdar/, ['Buyur, efendim.', 'Nə deyirsən, mənim işimdir.']],
+    [/darixiram/, ['Darıxma, mən buradayam. İstəsən zarafat deyərəm.']],
+    [/sevirem/, ['Sağ ol, efendim. Mən də səni köməkçi kimi sevirəm.']],
+    [/salam|salamlar/, ['Salam, efendim! Nə lazımdır?', 'Salam! Eşidirəm səni.']]
+  ];
+
+  var APPS = {
+    youtube:  {n:'YouTube',   re:/youtube|yutub|utub|yotub/,             href:'intent://www.youtube.com/#Intent;scheme=https;package=com.google.android.youtube;S.browser_fallback_url=https%3A%2F%2Fwww.youtube.com;end'},
+    whatsapp: {n:'WhatsApp',  re:/whatsapp|vatsap|vatsp|uotsap|votsap/,  href:'intent://send/#Intent;scheme=whatsapp;package=com.whatsapp;S.browser_fallback_url=https%3A%2F%2Fwa.me;end'},
+    instagram:{n:'Instagram', re:/instagram|instaqram|insta/,            href:'intent://instagram.com/#Intent;scheme=https;package=com.instagram.android;S.browser_fallback_url=https%3A%2F%2Fwww.instagram.com;end'},
+    telegram: {n:'Telegram',  re:/telegram/,                              href:'intent://resolve/#Intent;scheme=tg;package=org.telegram.messenger;S.browser_fallback_url=https%3A%2F%2Ft.me;end'},
+    tiktok:   {n:'TikTok',    re:/tiktok|tik tok/,                        href:'intent://www.tiktok.com/#Intent;scheme=https;package=com.zhiliaoapp.musically;S.browser_fallback_url=https%3A%2F%2Fwww.tiktok.com;end'},
+    spotify:  {n:'Spotify',   re:/spotify|spotifay/,                      href:'intent://open.spotify.com/#Intent;scheme=https;package=com.spotify.music;S.browser_fallback_url=https%3A%2F%2Fopen.spotify.com;end'},
+    maps:     {n:'Xəritə',    re:/xerite|google maps|\bmaps\b/,           href:'https://www.google.com/maps'},
+    google:   {n:'Google',    re:/\bgoogle\b|\bqugl\b|\bgogl/,            href:'https://www.google.com'},
+    phone:    {n:'Telefon',   re:/\bzeng et\b|\bnomre yig/,               href:'tel:'}
+  };
+
+  var speaking = false, aRec = null, aOn = false, aDenied = false, aWake = 0, lastHeard = '', lastAt = 0, tmr = null;
+
+  function talk(text){
+    try{
+      var s = window.speechSynthesis; if(!s) return;
+      s.cancel(); speaking = true;
+      var u = new SpeechSynthesisUtterance(text);
+      var v = s.getVoices() || [], p = null, i;
+      for(i = 0; i < v.length; i++){ if(/^az/i.test(v[i].lang)){ p = v[i]; break; } }
+      if(!p){ for(i = 0; i < v.length; i++){ if(/^tr/i.test(v[i].lang)){ p = v[i]; break; } } }
+      if(p){ u.voice = p; u.lang = p.lang; } else { u.lang = 'tr-TR'; }
+      u.rate = 1; u.pitch = .95;
+      var done = function(){ setTimeout(function(){ speaking = false; }, 500); };
+      u.onend = done; u.onerror = done;
+      s.speak(u);
+      setTimeout(function(){ speaking = false; }, 15000);
+    }catch(e){ speaking = false; }
+  }
+
+  function makeAct(a){
+    var el = document.createElement('a');
+    el.className = 'act' + (a.alt ? ' alt' : '');
+    el.href = a.href; el.textContent = a.label;
+    if(/^https?:/.test(a.href)){ el.target = '_blank'; el.rel = 'noopener'; }
+    return el;
+  }
+  function aReply(text, opts){
+    opts = opts || {};
+    var r = $('reply'); r.textContent = text;
+    r.style.animation = 'none'; void r.offsetWidth; r.style.animation = '';
+    var acts = $('acts'); acts.innerHTML = '';
+    (opts.acts || []).forEach(function(a){ acts.appendChild(makeAct(a)); });
+    if(opts.say !== false) talk(text);
+  }
+
+  function setOrb(on){
+    var o = $('orb'); o.classList.toggle('live', on); o.classList.toggle('off', !on);
+    $('chiptxt').textContent = on ? 'Çələbi qulaq asır' : 'Mikrofon söndürülüb';
+  }
+  function asstStart(){
+    if(app.dataset.state !== 'home') return;
+    if(!SR){ setOrb(false); aReply('Bu brauzer səsi tanımır. Aşağıdakı düymələrdən istifadə et.', {say:false}); return; }
+    aOn = true; aDenied = false; setOrb(true); listenA();
+  }
+  function stopRec(){ try{ if(aRec){ aRec.onend = null; aRec.onresult = null; aRec.abort(); } }catch(e){} }
+  function asstStop(){
+    aOn = false; stopRec(); setOrb(false);
+    try{ window.speechSynthesis && window.speechSynthesis.cancel(); }catch(e){}
+    speaking = false; clearTimeout(tmr);
+    $('acts').innerHTML = ''; $('said').textContent = '';
+    $('reply').textContent = '«Çələbi» de, sonra əmrini söylə.';
+  }
+  function listenA(){
+    if(!aOn || aDenied || !SR) return;
+    stopRec();
+    try{
+      aRec = new SR(); aRec.lang = lang; aRec.continuous = true; aRec.interimResults = false;
+      aRec.onresult = function(e){
+        for(var i = e.resultIndex; i < e.results.length; i++){
+          if(e.results[i].isFinal) onHeard(e.results[i][0].transcript);
+        }
+      };
+      aRec.onerror = function(e){
+        if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
+          aDenied = true; aOn = false; setOrb(false);
+          aReply('Mikrofon icazəsi yoxdur. Aşağıdakı düymələrdən istifadə et.', {say:false});
+        } else if(e.error === 'language-not-supported'){ lang = 'tr-TR'; }
+      };
+      aRec.onend = function(){
+        if(aOn && app.dataset.state === 'home' && !document.hidden){ setTimeout(listenA, 300); }
+      };
+      aRec.start();
+    }catch(e){}
+  }
+  document.addEventListener('visibilitychange', function(){
+    if(document.hidden){ stopRec(); }
+    else if(aOn && app.dataset.state === 'home'){ listenA(); }
+  });
+  $('orb').onclick = function(){
+    tone(700, .06);
+    if(aOn){ aOn = false; stopRec(); setOrb(false); }
+    else { aDenied = false; aOn = true; setOrb(true); listenA(); }
+  };
+
+  function onHeard(raw){
+    if(speaking) return;
+    var now = Date.now(), n = nz(raw);
+    if(!n || (n === lastHeard && now - lastAt < 2000)) return;
+    lastHeard = n; lastAt = now;
+    $('said').textContent = '“' + raw.trim() + '”';
+    var m = n.match(/c?h?el[ea]b[iy]\w*/);
+    if(m){
+      tone(900, .05);
+      var after = (n.slice(0, m.index) + ' ' + n.slice(m.index + m[0].length)).trim();
+      if(after.length > 2){ aWake = 0; handle(after, raw); }
+      else { aWake = now + 9000; aReply('Bəli, efendim?'); }
+    } else if(now < aWake){
+      aWake = 0; handle(n, raw);
+    }
+  }
+
+  function findApp(n){
+    for(var k in APPS){ if(APPS[k].re.test(n)) return k; }
+    return null;
+  }
+  function claudeLink(q){ return 'https://claude.ai/new?q=' + encodeURIComponent(q); }
+
+  function parseTime(n){
+    var m = n.match(/(\d{1,2})[:.](\d{2})/), h = null, mi = 0;
+    if(m){ h = +m[1]; mi = +m[2]; }
+    else if((m = n.match(/saat (\d{1,2})/))){ h = +m[1]; }
+    else {
+      var W = {bir:1, iki:2, uc:3, dord:4, bes:5, alti:6, yeddi:7, sekkiz:8, doqquz:9, on:10};
+      var mm = n.match(/\b(bir|iki|uc|dord|bes|alti|yeddi|sekkiz|doqquz|on)\b/);
+      if(mm) h = W[mm[1]];
+    }
+    if(h === null) return null;
+    if(/aksam|axsam/.test(n) && h < 12) h += 12;
+    if(h > 23 || mi > 59) return null;
+    return [h, mi];
+  }
+
+  function setTimer(v, u){
+    var mult = u === 'saniye' ? 1 : (u === 'deqiqe' ? 60 : 3600);
+    var ms = Math.min(v * mult * 1000, 86400000);
+    var label = v + ' ' + (u === 'saniye' ? 'saniyə' : (u === 'deqiqe' ? 'dəqiqə' : 'saat'));
+    clearTimeout(tmr);
+    tmr = setTimeout(function(){
+      aReply('Vaxt bitdi, efendim! ' + label + ' keçdi.');
+      buzz([200,100,200,100,400]); sweep(600, 1200, .6, 'square');
+    }, ms);
+    aReply(label + ' üçün taymer qurdum. Çələbi açıq qalsa, xəbər verəcəm.');
+  }
+
+  function handle(n, raw){
+    var m, i;
+    if(/taymer|geri say|sayqac/.test(n) && (m = n.match(/(\d+)\s*(saniye|deqiqe|saat)/))){ return setTimer(+m[1], m[2]); }
+
+    if(/budilnik|oyat|zeng saati/.test(n)){
+      var t = parseTime(n);
+      var hh = t ? pad2(t[0]) + ':' + pad2(t[1]) : null;
+      return claudeGo(
+        hh ? ('Mənə ' + hh + '-a budilnik qur') : 'Mənə budilnik qur',
+        hh ? ('Budilniki ' + hh + ' üçün Claude-a ötürürəm.') : 'Budilnik üçün Claude-a ötürürəm.'
+      );
+    }
+
+    if(/\bbagla\b/.test(n)){
+      if(/ozunu|ozun/.test(n)){
+        try{ window.close(); }catch(e){}
+        return aReply('Özümü bağlaya bilmirəm. Ana ekrana keç. Mən yalnız açıq olanda qulaq asıram.');
+      }
+      return aReply('Başqa tətbiqləri bağlaya bilmirəm. Geri jestindən və ya son tətbiqlər düyməsindən istifadə et.');
+    }
+
+    var key = findApp(n);
+    if(key){ return openAuto(key); }
+
+    if(/hava/.test(n)){
+      return aReply('Hava proqnozunu Google-da göstərim.', {acts:[{label:'Hava proqnozu', href:'https://www.google.com/search?q=hava+proqnozu'}]});
+    }
+    if(/(saat|vaxt)\s+(nec|ne)/.test(n)){
+      var d = new Date();
+      return aReply('Saat indi ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + '.');
+    }
+    if(/tarix|ne gun|hansi gun|bu gun/.test(n)){
+      var dt = '';
+      try{ dt = new Date().toLocaleDateString('az-AZ', {weekday:'long', day:'numeric', month:'long', year:'numeric'}); }catch(e){}
+      return aReply('Bu gün ' + dt + '.');
+    }
+    if(/zarafat|gulmeli|gulduru|latife|anekdot/.test(n)){
+      jokeIx = (jokeIx + 1) % JOKES.length;
+      return aReply(JOKES[jokeIx]);
+    }
+    for(i = 0; i < SMALL.length; i++){
+      if(SMALL[i][0].test(n)) return aReply(rnd(SMALL[i][1]));
+    }
+
+    var q = (raw || n).replace(/[cç]?h?[eə]l[eə]b[iıİ]\w*/gi, '').trim();
+    if(q.length > 3){ return claudeGo(q, 'Bunu Claude-a ötürürəm.'); }
+    aReply('Bunu başa düşmədim. Bir də de.');
+  }
+
+  /* ---------- automatic launching ---------- */
+  var MD = '';
+  try{ MD = localStorage.getItem('celebi-md') || ''; }catch(e){}
+  function mdFire(key){
+    if(!MD) return false;
+    try{
+      fetch('https://trigger.macrodroid.com/' + encodeURIComponent(MD) + '/' + key, {mode:'no-cors'}).catch(function(){});
+      return true;
+    }catch(e){ return false; }
+  }
+  function fallbackAct(label, href, msg){
+    if(document.hidden) return;
+    $('reply').textContent = msg;
+    $('acts').appendChild(makeAct({label: label, href: href}));
+  }
+  function openAuto(key){
+    var a = APPS[key], viaMd = mdFire(key);
+    aReply(a.n + ' açılır.');
+    if(!viaMd){ setTimeout(function(){ try{ window.location.href = a.href; }catch(e){} }, 700); }
+    setTimeout(function(){ fallbackAct(a.n + ' — aç', a.href, 'Avtomatik açıla bilmədi. Düyməyə toxun.'); }, 3000);
+  }
+  function claudeGo(q, msg){
+    var href = claudeLink(q);
+    aReply(msg);
+    setTimeout(function(){ try{ window.location.href = href; }catch(e){} }, 1200);
+    setTimeout(function(){ fallbackAct('Claude-a ötür', href, 'Avtomatik ötürülmədi. Düyməyə toxun.'); }, 4000);
+  }
+
+  (function buildChips(){
+    var row = $('qrow');
+    function link(label, href){
+      var a = document.createElement('a'); a.className = 'q'; a.href = href; a.textContent = label;
+      if(/^https?:/.test(href)){ a.target = '_blank'; a.rel = 'noopener'; }
+      row.appendChild(a);
+    }
+    function cmd(label, fn){
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'q'; b.textContent = label;
+      b.onclick = fn; row.appendChild(b);
+    }
+    cmd('Saat', function(){ handle('saat nece', 'saat'); });
+    cmd('Zarafat', function(){ handle('zarafat', 'zarafat'); });
+    link('YouTube', APPS.youtube.href);
+    link('WhatsApp', APPS.whatsapp.href);
+    link('Instagram', APPS.instagram.href);
+    link('Telegram', APPS.telegram.href);
+    link('Budilnik', claudeLink('Mənə budilnik qur'));
+    cmd('MacroDroid', function(){
+      var v = null;
+      try{ v = window.prompt('MacroDroid Device ID (Webhook üçün):', MD); }catch(e){}
+      if(v !== null){
+        MD = v.trim();
+        try{ localStorage.setItem('celebi-md', MD); }catch(e){}
+        aReply(MD ? 'MacroDroid qoşuldu.' : 'MacroDroid söndürüldü.', {say:false});
+      }
+    });
+  })();
+
   try{ window.speechSynthesis && window.speechSynthesis.getVoices(); }catch(e){}
 })();
 </script>
